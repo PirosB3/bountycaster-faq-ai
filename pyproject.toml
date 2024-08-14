@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "faqbot"
+version = "0.1.0"
+description = ""
+authors = ["Daniel Pyrathon <pirosb3@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+openai = "^1.40.6"
+pydantic = "^2.8.2"
+python-dotenv = "^1.0.1"
+questionary = "^2.0.1"
+tiktoken = "^0.7.0"
+
+
+[tool.poetry.group.dev.dependencies]
+ipdb = "^0.13.13"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
