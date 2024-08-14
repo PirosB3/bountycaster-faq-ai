@@ -11,7 +11,6 @@ load_dotenv()
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("PROJECT_OPENAI_KEY"))
 
-
 def read_markdown_files(docs_folder):
     markdown_content = ""
     for filename in glob.glob(os.path.join(docs_folder, "**/*.md"), recursive=True):
@@ -23,17 +22,15 @@ def read_markdown_files(docs_folder):
     if not markdown_content:
         raise FileNotFoundError("No markdown files found in the docs folder.")
 
-    enc = tiktoken.encoding_for_model("gpt-4o")
+    enc = tiktoken.encoding_for_model("gpt-4")
     response = enc.encode(markdown_content)
-    import ipdb; ipdb.set_trace()
     print(f"Num tokens: {len(response)}")
     return markdown_content
 
-
-def get_chat_completion(prompt, context):
+def get_chat_completion_stream(prompt, context):
     try:
-        completion = client.chat.completions.create(
-            model="gpt-4o",
+        stream = client.chat.completions.create(
+            model="gpt-4",
             messages=[
                 {
                     "role": "system",
@@ -45,11 +42,36 @@ def get_chat_completion(prompt, context):
                 },
                 {"role": "user", "content": prompt},
             ],
+            stream=True,
         )
-        return completion.choices[0].message.content.strip()
+        return stream
     except Exception as e:
         return f"An error occurred: {str(e)}"
 
+def print_streaming_response(stream):
+    full_response = ""
+    print("\n@bountybotfaq: ", end="", flush=True)
+    for chunk in stream:
+        if chunk.choices[0].delta.content is not None:
+            content = chunk.choices[0].delta.content
+            print(content, end="", flush=True)
+            full_response += content
+    print("\n")
+    return full_response
+
+def reinforce_answer(question, answer):
+    reinforced_answer = questionary.text(
+        "Please provide the reinforced answer:",
+        default=answer
+    ).ask()
+    
+    reinforced_content = f"Q: {question}\nA: {reinforced_answer}\n\n"
+    
+    os.makedirs("docs", exist_ok=True)
+    with open("docs/reinforced.md", "a", encoding="utf-8") as file:
+        file.write(reinforced_content)
+    
+    print("Answer reinforced and saved successfully.")
 
 def main():
     print("Welcome to the Bountycaster FAQ CLI tool!")
@@ -76,11 +98,15 @@ def main():
                 "What is your question about Bountycaster?"
             ).ask()
             if user_input:
-                response = get_chat_completion(user_input, context)
-                print(f"\n@bountybotfaq: {response}\n")
+                stream = get_chat_completion_stream(user_input, context)
+                answer = print_streaming_response(stream)
+                
+                reinforce = questionary.confirm("Would you like to reinforce this answer?").ask()
+                if reinforce:
+                    reinforce_answer(user_input, answer)
+                    context = read_markdown_files("./docs")
             else:
                 print("Please enter a valid input.")
-
 
 if __name__ == "__main__":
     main()
